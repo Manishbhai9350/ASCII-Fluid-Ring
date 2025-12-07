@@ -1,9 +1,16 @@
 import './style.css'
-import * as THREE from 'three';
+import * as THREE from 'three/webgpu';
 import {GLTFLoader} from 'three/examples/jsm/loaders/GLTFLoader'
 import {DRACOLoader} from 'three/examples/jsm/loaders/DRACOLoader'
 import fragmentShader from './shaders/fragment.glsl'
 import vertexShader from './shaders/vertex.glsl'
+import { GetSceneBounds } from './utils';
+import { GetMaterial } from './tsl/material.js';
+import { Clock } from 'three';
+
+
+console.clear()
+
 
 const {PI} = Math
 
@@ -14,18 +21,12 @@ canvas.height = innerHeight;
 
 const scene = new THREE.Scene()
 
-const renderer = new THREE.WebGLRenderer({canvas,antialias:true,alpha:true})
+const renderer = new THREE.WebGPURenderer({canvas,antialias:true})
+
+renderer.setClearColor(0xffffff)
 
 const camera = new THREE.PerspectiveCamera(75,innerWidth/innerHeight,1,1000)
 camera.position.z = 5
-
-const material = new THREE.ShaderMaterial({
-  fragmentShader,
-  vertexShader,
-  uniforms:{
-    uTime:{value:0}
-  }
-})
 
 
 const Manager = new THREE.LoadingManager();
@@ -37,20 +38,27 @@ Draco.setDecoderConfig({type: 'wasm'})
 GLB.setDRACOLoader(Draco)
 
 
+const {width:SceneWidth,height:SceneHeight} = GetSceneBounds(renderer,camera)
 
-const Cube = new THREE.Mesh(
-  new THREE.BoxGeometry(2,2,2),
-  material
+const Plane = new THREE.Mesh(
+  new THREE.PlaneGeometry(SceneWidth,SceneHeight,50,50),
+  GetMaterial({
+    aspect:SceneWidth/SceneHeight
+  })
 )
 
-Cube.rotation.set(-PI/4,PI/4,PI/2)
 
-scene.add(Cube)
+scene.add(Plane)
 
+
+const clock = new Clock()
+let PrevTime = clock.getElapsedTime()
 
 function Animate(){
-  Cube.rotation.z += .01
-  renderer.render(scene,camera)
+  const CurrentTime = clock.getElapsedTime()
+  const DT = CurrentTime - PrevTime;
+  PrevTime = CurrentTime;
+  renderer.renderAsync(scene,camera)
   requestAnimationFrame(Animate)
 }
 
@@ -66,3 +74,5 @@ function resize(){
 }
 
 window.addEventListener('resize',resize)
+
+
