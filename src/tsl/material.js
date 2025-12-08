@@ -57,12 +57,6 @@ export const GetMaterial = ({ aspect, ascii, length: asciiLen }) => {
   material.colorNode = Fn(() => {
     const time = timerLocal().mul(0.2);
 
-    let asciiUV = uv();
-
-    const scale = float(1).div(asciiLen) 
-
-    let asciiTexture = texture(ascii, asciiUV);
-
     const uvNode = uv();
     const aUV = vec2(uvNode.x.mul(aspect), uvNode.y);
 
@@ -78,8 +72,8 @@ export const GetMaterial = ({ aspect, ascii, length: asciiLen }) => {
     // const noise = fbm(vec2(aUV))
 
     const dist = float(0.1);
-    const speed = float(.2)
-    const duration = float(1.1)
+    const speed = float(0.2);
+    const duration = float(1.1);
     let base = fract(time.mul(speed)).mul(duration).add(0.4);
 
     const a = base.add(dist);
@@ -89,10 +83,20 @@ export const GetMaterial = ({ aspect, ascii, length: asciiLen }) => {
     const edge2 = smoothstep(a, b, len).oneMinus().mul(step(len, a).oneMinus());
     const ring = edge1.add(edge2);
 
+    const asciiUV = vec2(
+      uv()
+        .x.div(float(asciiLen))
+        // .add(floor(ring.mul(asciiLen)).div(asciiLen))
+        ,
+      uv().y
+    );
+
+    let asciiTexture = texture(ascii, asciiUV);
+
     // return vec4(ring,0, ring.oneMinus(), 1);
     // return vec4(ring, ring, ring, 1);
     // return vec4(ring, ring, ring, 1);
-    asciiTexture = asciiTexture.mul(ring)
+    // asciiTexture = asciiTexture.mul(ring);
     return asciiTexture;
   })();
 
