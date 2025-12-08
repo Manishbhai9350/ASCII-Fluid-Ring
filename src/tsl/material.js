@@ -25,14 +25,17 @@ import {
   smoothstep,
   step,
   vec2,
-  mx_fractal_noise_vec2
+  mx_fractal_noise_vec2,
+  clamp,
+  texture,
+  floor,
 } from "three/tsl";
 import { mx_noise_vec4 } from "three/tsl";
 
-export const GetMaterial = ({ aspect }) => {
+export const GetMaterial = ({ aspect, ascii, length: asciiLen }) => {
   const material = new MeshBasicNodeMaterial();
 
-  const fbm = Fn((pos = vec2(0,0)) => {
+  const fbm = Fn((pos = vec2(0, 0)) => {
     const OCTAVES = 4;
 
     let value = float(0.0);
@@ -40,7 +43,9 @@ export const GetMaterial = ({ aspect }) => {
     let frequency = float(1.0);
 
     for (let i = 0; i < OCTAVES; i++) {
-      value = value.add(mx_fractal_noise_vec2(pos.mul(frequency)).mul(amplitude));
+      value = value.add(
+        mx_fractal_noise_vec2(pos.mul(frequency)).mul(amplitude)
+      );
 
       frequency = frequency.mul(2.0);
       amplitude = amplitude.mul(0.5);
@@ -50,46 +55,45 @@ export const GetMaterial = ({ aspect }) => {
   });
 
   material.colorNode = Fn(() => {
-    const time = timerLocal().mul(0.01);
+    const time = timerLocal().mul(0.2);
+
+    let asciiUV = uv();
+
+    const scale = float(1).div(asciiLen) 
+
+    let asciiTexture = texture(ascii, asciiUV);
 
     const uvNode = uv();
     const aUV = vec2(uvNode.x.mul(aspect), uvNode.y);
 
     const sub = vec2(0.5 * aspect, 0.5);
 
-    
     const len = length(aUV.sub(sub)).div(
-        float(2)
+      float(2)
         .pow(1 / 2)
         .mul(0.5)
-    )
+    );
 
     // Causing Errors
     // const noise = fbm(vec2(aUV))
 
-    const smoothness = float(0.1);
-    const dist = float(0.05);
-    const base = float(0.3);
+    const dist = float(0.1);
+    const speed = float(.2)
+    const duration = float(1.1)
+    let base = fract(time.mul(speed)).mul(duration).add(0.4);
 
-    const edge1Fac = vec2(base.add(dist), 0);
-    const edge2Fac = vec2(base, 0);
+    const a = base.add(dist);
+    const edge1 = smoothstep(base, a, len).mul(step(len, a));
 
-    const edge1 = smoothstep(
-      fract(time).add(edge1Fac.x),
-      fract(time).add(edge1Fac.x.add(smoothness)),
-      len
-    ).oneMinus();
-    const edge2 = smoothstep(
-      fract(time).add(edge2Fac.x),
-      fract(time).add(edge2Fac.x.add(smoothness)),
-      len
-    ).oneMinus();
-
-    const ring = edge1.sub(edge2);
+    const b = a.add(0.1);
+    const edge2 = smoothstep(a, b, len).oneMinus().mul(step(len, a).oneMinus());
+    const ring = edge1.add(edge2);
 
     // return vec4(ring,0, ring.oneMinus(), 1);
     // return vec4(ring, ring, ring, 1);
-    return vec4(mx_noise_vec4, 0, 0, 1);
+    // return vec4(ring, ring, ring, 1);
+    asciiTexture = asciiTexture.mul(ring)
+    return asciiTexture;
   })();
 
   return material;

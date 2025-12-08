@@ -4,7 +4,7 @@ import {GLTFLoader} from 'three/examples/jsm/loaders/GLTFLoader'
 import {DRACOLoader} from 'three/examples/jsm/loaders/DRACOLoader'
 import fragmentShader from './shaders/fragment.glsl'
 import vertexShader from './shaders/vertex.glsl'
-import { GetSceneBounds } from './utils';
+import { GetSceneBounds, GetASCIITexture } from './utils';
 import { GetMaterial } from './tsl/material.js';
 import { Clock } from 'three';
 
@@ -43,7 +43,8 @@ const {width:SceneWidth,height:SceneHeight} = GetSceneBounds(renderer,camera)
 const Plane = new THREE.Mesh(
   new THREE.PlaneGeometry(SceneWidth,SceneHeight,50,50),
   GetMaterial({
-    aspect:SceneWidth/SceneHeight
+    aspect:SceneWidth/SceneHeight,
+    ...GetASCIITexture()
   })
 )
 
