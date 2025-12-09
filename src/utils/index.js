@@ -1,4 +1,5 @@
 import { CanvasTexture } from "three";
+import { ClampToEdgeWrapping } from "three";
 import { NearestFilter } from "three";
 import { PerspectiveCamera, Scene, WebGLRenderer } from "three";
 import { degToRad } from "three/src/math/MathUtils.js";
@@ -16,13 +17,14 @@ export function GetSceneBounds(
 }
 
 export const GetASCIITexture = () => {
-  const ascii = "IU"; // characters you want
+  const ascii = "MNOG"; // characters you want
   const length = ascii.length;
 
-  const size = 100; // pixel size for each square cell
+  const size = 1000; // pixel size for each square cell
 
   // Canvas should be exactly 2 squares wide and 1 row tall
   const canvas = document.createElement("canvas");
+  document.body.querySelector('main').appendChild(canvas)
   canvas.width = length * size;   // 2 * size
   canvas.height = size;           // 1 row
 
@@ -37,7 +39,7 @@ export const GetASCIITexture = () => {
 
   // monospace → equal width characters
   ctx.fillStyle = "#ffffff";
-  ctx.font = `${size * 0.7}px "Courier New", monospace`;
+  ctx.font = `${size * 0.7}px Arial, Helvetica, sans-serif`;
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
 
@@ -57,6 +59,7 @@ export const GetASCIITexture = () => {
   tex.minFilter = NearestFilter;
   tex.magFilter = NearestFilter;
   tex.generateMipmaps = false;
+  tex.wrapS = tex.wrapT = ClampToEdgeWrapping;
 
   return { ascii: tex, length };
 };
