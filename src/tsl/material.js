@@ -34,34 +34,23 @@ import {
   dot,
 } from "three/tsl";
 import { mx_noise_vec4 } from "three/tsl";
+import { perlinNoise, randomGradient } from "../noise/perlin.js";
+import { domainWarp } from "../noise/domain.js";
+import { curlNoise2D } from "../noise/curl.js";
+import { fbm, fbmPerlin, fbmSimplex2D } from "../noise/fbm.js";
+import { simplexNoise2D } from "../noise/simplex.js";
+import { marbleNoise } from "../noise/wood.js";
+import { ridgedNoise } from "../noise/ridged.js";
 
 export const GetMaterial = ({
-  aspect,
+  aspect: screenAspect,
   ascii,
   length: asciiLen,
   invRows = 0,
   invCols = 0,
+  uniforms,
 }) => {
   const material = new MeshBasicNodeMaterial();
-
-  const fbm = Fn((pos = vec2(0, 0)) => {
-    const OCTAVES = 4;
-
-    let value = float(0.0);
-    let amplitude = float(0.5);
-    let frequency = float(1.0);
-
-    for (let i = 0; i < OCTAVES; i++) {
-      value = value.add(
-        mx_fractal_noise_vec2(pos.mul(frequency)).mul(amplitude)
-      );
-
-      frequency = frequency.mul(2.0);
-      amplitude = amplitude.mul(0.5);
-    }
-
-    return value;
-  });
 
   material.positionNode = Fn(() => {
     const aPositions = attribute("aPositions", "vec3");
@@ -70,75 +59,88 @@ export const GetMaterial = ({
   })();
 
   material.colorNode = Fn(() => {
-    const time = timerLocal().mul(0.2);
+    const time = timerLocal().mul(0.05);
+
+    const aspect = vec2(1, screenAspect);
+
+    const noiseScale = uniforms.uNoiseScale; // Uniform
+    const noiseFactor = uniforms.uNoiseFactor; // Uniform
+    const warpStrength = uniforms.uWarpStrength; // Uniform
 
     const rawScreenUV = attribute("screenUV", "vec2");
     const screenUV = rawScreenUV.add(uv().mul(vec2(invRows, invCols)));
 
-    const uvNode = rawScreenUV;
-    const aUV = vec2(uvNode.x.mul(aspect), uvNode.y);
+    let len = length(screenUV.sub(0.5) /* .div(aspect) */)
+      .div(1 / 2)
+      .div(float(2).pow(1 / 2));
 
-    const sub = vec2(0.5 * aspect, 0.5);
+    const noiseUV = screenUV.sub(0.5).mul(2).mul(noiseFactor);
 
-    const len = length(aUV.sub(sub)).div(
-      float(2)
-        .pow(1 / 2)
-        .mul(0.5)
-    );
+    let noisedLen = float(0);
 
-    // Causing Errors
-    // const noise = fbm(vec2(aUV))
+    // ?? Perlin Noise
+    noisedLen = perlinNoise(noiseUV).mul(noiseScale);
 
-    const dist = float(0.2);
-    const speed = float(0.5);
-    const duration = float(1);
-    let base = fract(time.mul(speed)).mul(duration);
+    // ?? Domain Warp Noise
+    // noisedLen = domainWarp(noiseUV,warpStrength).mul(noiseScale);
 
-    const a = base.add(dist);
-    const edge1 = smoothstep(base, a, len).mul(step(len, a));
+    // ?? Curl Noise |
 
-    const b = a.add(0.1);
-    const edge2 = smoothstep(a, b, len).oneMinus().mul(step(len, a).oneMinus());
-    const ring = edge1.add(edge2)
+    // Base -> Perlin Noise
+    // noisedLen = length(curlNoise2D(
+    //   noiseUV,
+    //   perlinNoise
+    // )).mul(noiseScale)
 
-    let offsetX = float(0);
-    
-    for(let i = 0; i < asciiLen - 1; i++) {
-      offsetX = smoothstep(
-        float(1).div(asciiLen).mul(i),
-        float(1).div(asciiLen).mul(float(i).add(1)),
-        ring.oneMinus()
-      )
-    }
+    // ?? Ridged Noise |
 
+    // Base -> perlinNoise
+    //   noisedLen = ridgedNoise(
+    //     noiseUV,
+    //     parlinNoise
+    //   ).mul(noiseScale)
 
+    // len = len.add(noisedLen)
 
-    // Showing Correct Character Based On Ring Value 
-    const idx = floor(ring.mul(asciiLen))
+    // Base -> simplexNoise2d
+    //   noisedLen = ridgedNoise(
+    //     noiseUV,
+    // simplexNoise2D
+    //   ).mul(noiseScale)
 
-    offsetX = float(1).div(asciiLen).mul(idx)
+    // Base -> marble / wood
+    // noisedLen = ridgedNoise(noiseUV, marbleNoise).mul(
+    //   noiseScale
+    // );
 
-    const asciiUV = vec2(
-      uv().x.div(asciiLen).add(offsetX),
-      uv().y
-    );
+    // ?? Marble
+    // noisedLen = marbleNoise(noiseUV).mul(noiseScale);
 
-    let asciiTexture = texture(ascii, asciiUV);
+    // ?? FBM |
 
-    let color = vec3(170 / 255, 161 / 255, 219 / 255).oneMinus();
+      // noisedLen = fbm(noiseUV).mul(noiseScale)
 
-    asciiTexture = vec4(
-      asciiTexture.rgb.mul(
-        dot(color,asciiTexture.rgb)
-      ),
-      asciiTexture.a
-    )
+      // ?? Base -> Perlin Noise
+      // noisedLen = fbmPerlin(noiseUV).mul(noiseScale)
 
-    color = mix(color,asciiTexture,asciiTexture.r).mul(ring).oneMinus()
+      // ?? Base -> Simplex Noise
+      // noisedLen = fbmSimplex2D(noiseUV).mul(noiseScale)
 
-    // return vec4(offsetX, offsetX, offsetX, 1);
-    // return asciiTexture.oneMinus();
-    return color;
+    len = len.add(noisedLen);
+
+    const dist = float(0.1);
+    const base = mod(time.add(dist), 1);
+
+    const ring1 = smoothstep(base.sub(dist), base, len).mul(step(len, base));
+    const ring2 = smoothstep(base, base.add(dist), len)
+      .oneMinus()
+      .mul(step(base, len));
+
+    const ring = ring1.add(ring2);
+
+    let color = vec4(170 / 255, 161 / 255, 219 / 255, 1);
+
+    return vec4(ring, ring, ring, 1);
   })();
 
   return material;

@@ -7,10 +7,25 @@ import vertexShader from "./shaders/vertex.glsl";
 import { GetSceneBounds, GetASCIITexture } from "./utils";
 import { GetMaterial } from "./tsl/material.js";
 import { BufferAttribute, Clock, Matrix4 } from "three";
+import GUI from "lil-gui";
+import { uniform } from "three/tsl";
 
 console.clear();
 
 const { PI } = Math;
+
+const gui = new GUI()
+
+const uniforms = {
+  uNoiseScale: uniform(.28),
+  uNoiseFactor: uniform(2),
+  uWarpStrength: uniform(1.5),
+};
+
+
+gui.add(uniforms.uNoiseScale, "value", 0, 1).name("Noise Scale");
+gui.add(uniforms.uNoiseFactor, "value", 0, 10).name("Noise Factor");
+gui.add(uniforms.uWarpStrength, "value", 0, 5).name("Warp strength");
 
 const canvas = document.querySelector("canvas");
 
@@ -62,6 +77,7 @@ const InstancedPlanes = new THREE.InstancedMesh(
     ...GetASCIITexture(),
     invRows: 1 / rows,
     invCols: 1 / cols,
+    uniforms
   }),
   instances
 );
