@@ -66,13 +66,14 @@ export const GetMaterial = ({
     const noiseScale = uniforms.uNoiseScale; // Uniform
     const noiseFactor = uniforms.uNoiseFactor; // Uniform
     const warpStrength = uniforms.uWarpStrength; // Uniform
+    const baseLength = uniforms.uBaseLength; // Uniform
 
     const rawScreenUV = attribute("screenUV", "vec2");
     const screenUV = rawScreenUV.add(uv().mul(vec2(invRows, invCols)));
 
     let len = length(screenUV.sub(0.5) /* .div(aspect) */)
       .div(1 / 2)
-      .div(float(2).pow(1 / 2));
+      .div(float(2).pow(1 / 2)).add(baseLength);
 
     const noiseUV = screenUV.sub(0.5).mul(2).mul(noiseFactor);
 

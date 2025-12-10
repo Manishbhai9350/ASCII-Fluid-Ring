@@ -20,12 +20,14 @@ const uniforms = {
   uNoiseScale: uniform(.28),
   uNoiseFactor: uniform(2),
   uWarpStrength: uniform(1.5),
+  uBaseLength: uniform(.2),
 };
 
 
-gui.add(uniforms.uNoiseScale, "value", 0, 1).name("Noise Scale");
+gui.add(uniforms.uNoiseScale, "value", 0, .5).name("Noise Scale");
 gui.add(uniforms.uNoiseFactor, "value", 0, 10).name("Noise Factor");
 gui.add(uniforms.uWarpStrength, "value", 0, 5).name("Warp strength");
+gui.add(uniforms.uBaseLength, "value", 0, 1).name("Base Length");
 
 const canvas = document.querySelector("canvas");
 
