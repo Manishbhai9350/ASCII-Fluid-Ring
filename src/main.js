@@ -14,20 +14,28 @@ console.clear();
 
 const { PI } = Math;
 
-const gui = new GUI()
+const gui = new GUI();
 
 const uniforms = {
-  uNoiseScale: uniform(.28),
-  uNoiseFactor: uniform(2),
-  uWarpStrength: uniform(1.5),
-  uBaseLength: uniform(.2),
+  uNoiseScale: uniform(0.1),  // Ring Noise Scale
+  uNoiseFactor: uniform(3), // Ring Noise Factor
+
+  uDistFactor: uniform(10),    // Thickness Noise Factor
+  uDistScale: uniform(.026),    // Thickness Noise Scale
+  uDistSpeed: uniform(3),    // Thickness Noise Speed
+
+  uBaseLength: uniform(0.2),  // Base Length
+  uProgress: uniform(0.4),    // Progress
+  uSpeed: uniform(0.1),       // Speed 
 };
 
-
-gui.add(uniforms.uNoiseScale, "value", 0, .5).name("Noise Scale");
+gui.add(uniforms.uNoiseScale, "value", 0, 0.5).name("Noise Scale");
 gui.add(uniforms.uNoiseFactor, "value", 0, 10).name("Noise Factor");
-gui.add(uniforms.uWarpStrength, "value", 0, 5).name("Warp strength");
+gui.add(uniforms.uDistFactor, "value", 0, 10).name("Dist Factor");
+gui.add(uniforms.uDistScale, "value", 0, .3).name("Dist Scale");
+gui.add(uniforms.uDistSpeed, "value", 0, 10).name("Dist Speed");
 gui.add(uniforms.uBaseLength, "value", 0, 1).name("Base Length");
+gui.add(uniforms.uSpeed, "value", 0, 1).name("Speed");
 
 const canvas = document.querySelector("canvas");
 
@@ -79,7 +87,7 @@ const InstancedPlanes = new THREE.InstancedMesh(
     ...GetASCIITexture(),
     invRows: 1 / rows,
     invCols: 1 / cols,
-    uniforms
+    uniforms,
   }),
   instances
 );
@@ -123,6 +131,16 @@ function Animate() {
   const CurrentTime = clock.getElapsedTime();
   const DT = CurrentTime - PrevTime;
   PrevTime = CurrentTime;
+
+  if(uniforms.uProgress.value >= 1) {
+    uniforms.uProgress.value = uniforms.uBaseLength.value;
+  }
+
+  uniforms.uProgress.value += DT * uniforms.uSpeed.value * .1;
+
+  // console.log(uniforms.uProgress.value >= uniforms.uBaseLength.value);
+  console.log(uniforms.uProgress.value);
+
   renderer.renderAsync(scene, camera);
   requestAnimationFrame(Animate);
 }

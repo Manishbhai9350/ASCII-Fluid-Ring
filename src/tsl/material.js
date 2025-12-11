@@ -32,6 +32,9 @@ import {
   attribute,
   positionLocal,
   dot,
+  lessThan,
+  atan2,
+  PI2,
 } from "three/tsl";
 import { mx_noise_vec4 } from "three/tsl";
 import { perlinNoise, randomGradient } from "../noise/perlin.js";
@@ -65,22 +68,24 @@ export const GetMaterial = ({
 
     const noiseScale = uniforms.uNoiseScale; // Uniform
     const noiseFactor = uniforms.uNoiseFactor; // Uniform
-    const warpStrength = uniforms.uWarpStrength; // Uniform
-    const baseLength = uniforms.uBaseLength; // Uniform
+    const progress = uniforms.uProgress; // Uniform
+    const distScale = uniforms.uDistScale; // Uniform
+    const distFactor = uniforms.uDistFactor; // Uniform
+    const distSpeed = uniforms.uDistSpeed; // Uniform
 
     const rawScreenUV = attribute("screenUV", "vec2");
     const screenUV = rawScreenUV.add(uv().mul(vec2(invRows, invCols)));
 
     let len = length(screenUV.sub(0.5) /* .div(aspect) */)
       .div(1 / 2)
-      .div(float(2).pow(1 / 2)).add(baseLength);
+      .div(float(2).pow(1 / 2));
 
-    const noiseUV = screenUV.sub(0.5).mul(2).mul(noiseFactor);
+    let noiseUV = screenUV.sub(0.5).mul(2).mul(noiseFactor);
 
     let noisedLen = float(0);
 
     // ?? Perlin Noise
-    noisedLen = perlinNoise(noiseUV).mul(noiseScale);
+    noisedLen = simplexNoise2D(noiseUV).mul(noiseScale);
 
     // ?? Domain Warp Noise
     // noisedLen = domainWarp(noiseUV,warpStrength).mul(noiseScale);
@@ -119,29 +124,42 @@ export const GetMaterial = ({
 
     // ?? FBM |
 
-      // noisedLen = fbm(noiseUV).mul(noiseScale)
+    // noisedLen = fbm(noiseUV).mul(noiseScale)
 
-      // ?? Base -> Perlin Noise
-      // noisedLen = fbmPerlin(noiseUV).mul(noiseScale)
+    // ?? Base -> Perlin Noise
+    // noisedLen = fbmPerlin(noiseUV).mul(noiseScale)
 
-      // ?? Base -> Simplex Noise
-      // noisedLen = fbmSimplex2D(noiseUV).mul(noiseScale)
+    // ?? Base -> Simplex Noise
+    // noisedLen = fbmSimplex2D(noiseUV).mul(noiseScale)
 
     len = len.add(noisedLen);
 
-    const dist = float(0.1);
-    const base = mod(time.add(dist), 1);
+    let dist = float(0.05);
+    const base = progress;
+
+    // Adding Noise in dist or thickness of the ring;
+
+    const nosiedDist = perlinNoise(
+      noiseUV.mul(distFactor).mul(0.1).add(time.mul(distSpeed))
+    ).mul(distScale);
+
+    dist = dist.add(nosiedDist);
 
     const ring1 = smoothstep(base.sub(dist), base, len).mul(step(len, base));
     const ring2 = smoothstep(base, base.add(dist), len)
       .oneMinus()
       .mul(step(base, len));
 
-    const ring = ring1.add(ring2);
+      
+      let color = vec4(170 / 255, 161 / 255, 219 / 255, 1);
+      
+      const theta = atan2(screenUV.y, screenUV.x);
+      
+      const opacityDiff = perlinNoise(screenUV.add(progress).mul(100)).mul(10);
 
-    let color = vec4(170 / 255, 161 / 255, 219 / 255, 1);
-
-    return vec4(ring, ring, ring, 1);
+      const ring = ring1.add(ring2);
+      
+    return vec4(ring, ring, ring, 0);
   })();
 
   return material;
