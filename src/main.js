@@ -10,6 +10,7 @@ import { BufferAttribute, Clock, Matrix4 } from "three";
 import GUI from "lil-gui";
 import { uniform } from "three/tsl";
 import { CreateRingTexture } from "./tsl/ring.js";
+import { OrbitControls } from "three/examples/jsm/Addons.js";
 
 console.clear();
 
@@ -58,24 +59,30 @@ const camera = new THREE.PerspectiveCamera(
 );
 camera.position.z = 5;
 
+
 const Manager = new THREE.LoadingManager();
 const Draco = new DRACOLoader(Manager);
 const GLB = new GLTFLoader(Manager);
+const Texture = new THREE.TextureLoader(Manager)
+
+const asciiTexture = await Texture.loadAsync('/ascii_texture.jpg')
 
 Draco.setDecoderPath("/draco/");
 Draco.setDecoderConfig({ type: "wasm" });
 GLB.setDRACOLoader(Draco);
+
+const controls = new OrbitControls(camera,canvas)
 
 const { width: SceneWidth, height: SceneHeight } = GetSceneBounds(
   renderer,
   camera
 );
 
-const size = 0.2;
+const size = 0.1;
 const gap = 0;
 
 const rows = Math.ceil(SceneWidth / size - gap * SceneHeight) + 1; // X count
-const cols = Math.ceil(SceneHeight / size - gap * SceneHeight) + 1; // Y count
+const cols = Math.ceil(SceneHeight / size  - gap * SceneHeight) + 1; // Y count
 
 // Creating The Ring Texture
 
@@ -91,17 +98,28 @@ const { renderTarget, ringTexture, ringScene } = CreateRingTexture(
   }
 );
 
+// const debugRing = new THREE.Mesh(
+//   new THREE.PlaneGeometry(5,5),
+//   new THREE.MeshBasicMaterial({
+//     map:ringTexture
+//   })
+// )
+
+// debugRing.position.z = camera.position.z - 2;
+// scene.add(debugRing)
+
 const instances = rows * cols;
 
 const InstancedPlanes = new THREE.InstancedMesh(
-  new THREE.PlaneGeometry(size, size),
+  new THREE.PlaneGeometry(size * 1.2, size),
   GetMaterial({
     aspect: SceneWidth / SceneHeight,
     ...GetASCIITexture(),
     invRows: 1 / rows,
     invCols: 1 / cols,
     uniforms,
-    ringTexture
+    ringTexture,
+    asciiTexture
   }),
   instances
 );

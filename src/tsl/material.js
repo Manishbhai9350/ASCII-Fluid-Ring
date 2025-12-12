@@ -52,7 +52,8 @@ export const GetMaterial = ({
   invRows = 0,
   invCols = 0,
   uniforms,
-  ringTexture
+  ringTexture,
+  asciiTexture: asciiCharTexture,
 }) => {
   const material = new MeshBasicNodeMaterial();
 
@@ -65,47 +66,53 @@ export const GetMaterial = ({
   material.colorNode = Fn(() => {
     const time = timerLocal().mul(0.05);
 
-    const invAspect = vec2(invRows, invCols)
+    const invAspect = vec2(invRows, invCols);
 
     // Calculating the correct screenUV as the screen is not just a plane but bunch of squares
     const rawScreenUV = attribute("screenUV", "vec2");
     const screenUV = rawScreenUV.add(uv().mul(invAspect));
 
-
     // Getting the center texture value for each square to show corect character;
-    const centeredUV = vec2(.5,.5).mul(invAspect).add(rawScreenUV)
-    const centerPixelValue = texture(ringTexture,centeredUV).r;
+    const centeredUV = vec2(0.5, 0.5).mul(invAspect).add(screenUV);
+    const centerPixelValue = texture(ringTexture, centeredUV).r;
 
-    const idx = floor(centerPixelValue.mul(asciiLen))
+    const asciiChars = float(5);
 
-    const baseOffset = float(1).div(asciiLen)
-    const offset = float(1).div(asciiLen).mul(idx.sub(1))
+    const invLength = float(1).div(asciiChars);
 
-    const ring = texture(ringTexture,screenUV)
+    const idx = clamp(
+      floor(centerPixelValue.mul(asciiChars)),
+      float(0),
+      asciiChars.sub(1)
+    );
 
+    // idx = mix(idx,1,step(centerPixelValue,invLength.mul(1)))
 
-    const asciiUV = vec2(
-      uv().x.mul(baseOffset).add(offset),
-      uv().y
-    )
+    const baseOffset = invLength;
+    const offset = invLength.mul(idx.sub(1));
 
-    let asciiTexture = texture(ascii,asciiUV)
+    const ring = texture(ringTexture, screenUV);
 
-    const opacedAscii = asciiTexture.mul(smoothstep(.3,.8,ring.r))
+    const asciiUV = vec2(uv().x.mul(baseOffset).add(offset), uv().y);
 
+    let asciiTexture = texture(asciiCharTexture, asciiUV);
 
+    const opacedAscii = asciiTexture.mul(smoothstep(0, 1, ring.r));
 
-    // Coloring 
-    let blue = vec4(69, 0, 173,255).div(255);
+    // Coloring
+    let blue = vec4(69, 0, 173, 255).div(255);
     let pink = vec4(0.9, 0.46, 0.87, 1);
-    const darkBlue = vec4(54, 1, 133,255).div(255)
-    const darkMaron = vec4(143, 1, 119,255).div(255)
-    let finalColor = mix(blue, vec4(0,0,0,1), ring.r.oneMinus());
-    
+    const darkBlue = vec4(54, 1, 133, 255).div(255);
+    const darkMaron = vec4(143, 1, 119, 255).div(255);
+    let finalColor = mix(blue, vec4(0, 0, 0, 1), ring.r.oneMinus());
 
-    finalColor = mix(finalColor,opacedAscii,opacedAscii.r).mul(ring.r)
-    
-    return finalColor;
+    // finalColor = mix(finalColor, opacedAscii, opacedAscii.r.mul(.7));
+
+    // return finalColor;
+    return ring;
+    // return vec4(ring.r,ring.r,ring.r,1);
+    // return vec4(rawScreenUV,0,1);
+    // return texture(asciiCharTexture,screenUV);
   })();
 
   return material;
