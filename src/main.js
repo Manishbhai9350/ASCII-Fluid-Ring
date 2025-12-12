@@ -9,6 +9,7 @@ import { GetMaterial } from "./tsl/material.js";
 import { BufferAttribute, Clock, Matrix4 } from "three";
 import GUI from "lil-gui";
 import { uniform } from "three/tsl";
+import { CreateRingTexture } from "./tsl/ring.js";
 
 console.clear();
 
@@ -17,22 +18,23 @@ const { PI } = Math;
 const gui = new GUI();
 
 const uniforms = {
-  uNoiseScale: uniform(0.1),  // Ring Noise Scale
-  uNoiseFactor: uniform(3), // Ring Noise Factor
+  uNoiseScale: uniform(0.1), // Ring Noise Scale
+  uNoiseFactor: uniform(2.1), // Ring Noise Factor
 
-  uDistFactor: uniform(10),    // Thickness Noise Factor
-  uDistScale: uniform(.026),    // Thickness Noise Scale
-  uDistSpeed: uniform(3),    // Thickness Noise Speed
+  uDist: uniform(innerWidth < 900 ? 0.1 : 0.03),
+  uDistFactor: uniform(10), // Thickness Noise Factor
+  uDistScale: uniform(innerWidth < 900 ? 0.05 : 0.15), // Thickness Noise Scale
+  uDistSpeed: uniform(3), // Thickness Noise Speed
 
-  uBaseLength: uniform(0.2),  // Base Length
-  uProgress: uniform(0.4),    // Progress
-  uSpeed: uniform(0.1),       // Speed 
+  uBaseLength: uniform(0.2), // Base Length
+  uProgress: uniform(0.4), // Progress
+  uSpeed: uniform(1), // Speed
 };
 
 gui.add(uniforms.uNoiseScale, "value", 0, 0.5).name("Noise Scale");
 gui.add(uniforms.uNoiseFactor, "value", 0, 10).name("Noise Factor");
 gui.add(uniforms.uDistFactor, "value", 0, 10).name("Dist Factor");
-gui.add(uniforms.uDistScale, "value", 0, .3).name("Dist Scale");
+gui.add(uniforms.uDistScale, "value", 0, 0.3).name("Dist Scale");
 gui.add(uniforms.uDistSpeed, "value", 0, 10).name("Dist Speed");
 gui.add(uniforms.uBaseLength, "value", 0, 1).name("Base Length");
 gui.add(uniforms.uSpeed, "value", 0, 1).name("Speed");
@@ -69,14 +71,25 @@ const { width: SceneWidth, height: SceneHeight } = GetSceneBounds(
   camera
 );
 
-const size = 0.6;
+const size = 0.2;
 const gap = 0;
 
 const rows = Math.ceil(SceneWidth / size - gap * SceneHeight) + 1; // X count
 const cols = Math.ceil(SceneHeight / size - gap * SceneHeight) + 1; // Y count
 
-console.clear();
-console.log(rows, cols);
+// Creating The Ring Texture
+
+const { renderTarget, ringTexture, ringScene } = CreateRingTexture(
+  SceneWidth,
+  SceneHeight,
+  {
+    aspect: SceneWidth / SceneHeight,
+    ...GetASCIITexture(),
+    invRows: 1 / rows,
+    invCols: 1 / cols,
+    uniforms,
+  }
+);
 
 const instances = rows * cols;
 
@@ -88,6 +101,7 @@ const InstancedPlanes = new THREE.InstancedMesh(
     invRows: 1 / rows,
     invCols: 1 / cols,
     uniforms,
+    ringTexture
   }),
   instances
 );
@@ -132,20 +146,26 @@ function Animate() {
   const DT = CurrentTime - PrevTime;
   PrevTime = CurrentTime;
 
-  if(uniforms.uProgress.value >= 1) {
+  if (uniforms.uProgress.value >= 1) {
     uniforms.uProgress.value = uniforms.uBaseLength.value;
   }
 
-  uniforms.uProgress.value += DT * uniforms.uSpeed.value * .1;
+  uniforms.uProgress.value += DT * uniforms.uSpeed.value * 0.1;
 
   // console.log(uniforms.uProgress.value >= uniforms.uBaseLength.value);
-  console.log(uniforms.uProgress.value);
+  // console.log(uniforms.uProgress.value);
 
+  renderer.setRenderTarget(renderTarget);
+  renderer.renderAsync(ringScene, camera);
+  renderer.setRenderTarget(null);
   renderer.renderAsync(scene, camera);
+
   requestAnimationFrame(Animate);
 }
 
 requestAnimationFrame(Animate);
+
+gui.close();
 
 function resize() {
   camera.aspect = innerWidth / innerHeight;

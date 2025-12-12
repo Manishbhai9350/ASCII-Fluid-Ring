@@ -52,6 +52,7 @@ export const GetMaterial = ({
   invRows = 0,
   invCols = 0,
   uniforms,
+  ringTexture
 }) => {
   const material = new MeshBasicNodeMaterial();
 
@@ -64,102 +65,47 @@ export const GetMaterial = ({
   material.colorNode = Fn(() => {
     const time = timerLocal().mul(0.05);
 
-    const aspect = vec2(1, screenAspect);
+    const invAspect = vec2(invRows, invCols)
 
-    const noiseScale = uniforms.uNoiseScale; // Uniform
-    const noiseFactor = uniforms.uNoiseFactor; // Uniform
-    const progress = uniforms.uProgress; // Uniform
-    const distScale = uniforms.uDistScale; // Uniform
-    const distFactor = uniforms.uDistFactor; // Uniform
-    const distSpeed = uniforms.uDistSpeed; // Uniform
-
+    // Calculating the correct screenUV as the screen is not just a plane but bunch of squares
     const rawScreenUV = attribute("screenUV", "vec2");
-    const screenUV = rawScreenUV.add(uv().mul(vec2(invRows, invCols)));
+    const screenUV = rawScreenUV.add(uv().mul(invAspect));
 
-    let len = length(screenUV.sub(0.5) /* .div(aspect) */)
-      .div(1 / 2)
-      .div(float(2).pow(1 / 2));
 
-    let noiseUV = screenUV.sub(0.5).mul(2).mul(noiseFactor);
+    // Getting the center texture value for each square to show corect character;
+    const centeredUV = vec2(.5,.5).mul(invAspect).add(rawScreenUV)
+    const centerPixelValue = texture(ringTexture,centeredUV).r;
 
-    let noisedLen = float(0);
+    const idx = floor(centerPixelValue.mul(asciiLen))
 
-    // ?? Perlin Noise
-    noisedLen = simplexNoise2D(noiseUV).mul(noiseScale);
+    const baseOffset = float(1).div(asciiLen)
+    const offset = float(1).div(asciiLen).mul(idx.sub(1))
 
-    // ?? Domain Warp Noise
-    // noisedLen = domainWarp(noiseUV,warpStrength).mul(noiseScale);
+    const ring = texture(ringTexture,screenUV)
 
-    // ?? Curl Noise |
 
-    // Base -> Perlin Noise
-    // noisedLen = length(curlNoise2D(
-    //   noiseUV,
-    //   perlinNoise
-    // )).mul(noiseScale)
+    const asciiUV = vec2(
+      uv().x.mul(baseOffset).add(offset),
+      uv().y
+    )
 
-    // ?? Ridged Noise |
+    let asciiTexture = texture(ascii,asciiUV)
 
-    // Base -> perlinNoise
-    //   noisedLen = ridgedNoise(
-    //     noiseUV,
-    //     parlinNoise
-    //   ).mul(noiseScale)
+    const opacedAscii = asciiTexture.mul(smoothstep(.3,.8,ring.r))
 
-    // len = len.add(noisedLen)
 
-    // Base -> simplexNoise2d
-    //   noisedLen = ridgedNoise(
-    //     noiseUV,
-    // simplexNoise2D
-    //   ).mul(noiseScale)
 
-    // Base -> marble / wood
-    // noisedLen = ridgedNoise(noiseUV, marbleNoise).mul(
-    //   noiseScale
-    // );
+    // Coloring 
+    let blue = vec4(69, 0, 173,255).div(255);
+    let pink = vec4(0.9, 0.46, 0.87, 1);
+    const darkBlue = vec4(54, 1, 133,255).div(255)
+    const darkMaron = vec4(143, 1, 119,255).div(255)
+    let finalColor = mix(blue, vec4(0,0,0,1), ring.r.oneMinus());
+    
 
-    // ?? Marble
-    // noisedLen = marbleNoise(noiseUV).mul(noiseScale);
-
-    // ?? FBM |
-
-    // noisedLen = fbm(noiseUV).mul(noiseScale)
-
-    // ?? Base -> Perlin Noise
-    // noisedLen = fbmPerlin(noiseUV).mul(noiseScale)
-
-    // ?? Base -> Simplex Noise
-    // noisedLen = fbmSimplex2D(noiseUV).mul(noiseScale)
-
-    len = len.add(noisedLen);
-
-    let dist = float(0.05);
-    const base = progress;
-
-    // Adding Noise in dist or thickness of the ring;
-
-    const nosiedDist = perlinNoise(
-      noiseUV.mul(distFactor).mul(0.1).add(time.mul(distSpeed))
-    ).mul(distScale);
-
-    dist = dist.add(nosiedDist);
-
-    const ring1 = smoothstep(base.sub(dist), base, len).mul(step(len, base));
-    const ring2 = smoothstep(base, base.add(dist), len)
-      .oneMinus()
-      .mul(step(base, len));
-
-      
-      let color = vec4(170 / 255, 161 / 255, 219 / 255, 1);
-      
-      const theta = atan2(screenUV.y, screenUV.x);
-      
-      const opacityDiff = perlinNoise(screenUV.add(progress).mul(100)).mul(10);
-
-      const ring = ring1.add(ring2);
-      
-    return vec4(ring, ring, ring, 0);
+    finalColor = mix(finalColor,opacedAscii,opacedAscii.r).mul(ring.r)
+    
+    return finalColor;
   })();
 
   return material;
