@@ -30,7 +30,6 @@ const uniforms = {
 
   uBaseLength: uniform(0.2), // Base Length
 
-
   uEase: uniform(0), // Progress
   uProgress: uniform(0.2), // Progress
   uSpeed: uniform(1), // Speed
@@ -134,12 +133,12 @@ for (let j = 0; j < rows; j++) {
   for (let i = 0; i < cols; i++) {
     const index = i + j * cols;
 
-    positions[index * 3 + 0] = (i - cols / 2 + 1/2) * size; // X
-    positions[index * 3 + 1] = (j - rows / 2 + 1/2) * size; // Y
+    positions[index * 3 + 0] = (i - cols / 2 + 1 / 2) * size; // X
+    positions[index * 3 + 1] = (j - rows / 2 + 1 / 2) * size; // Y
     positions[index * 3 + 2] = 0; // Z
 
-    uvs[index * 2 + 0] = (i) / cols;
-    uvs[index * 2 + 1] = (j) / rows;
+    uvs[index * 2 + 0] = i / cols;
+    uvs[index * 2 + 1] = j / rows;
   }
 }
 
@@ -154,34 +153,37 @@ InstancedPlanes.geometry.setAttribute(
 
 scene.add(InstancedPlanes);
 
-
 // Animating The Ring Easings
 
-function AimateRing(){
-  gsap.set(uniforms.uProgress,{
-    value:uniforms.uBaseLength.value
-  })
-  gsap.set(uniforms.uEase,{
-    value:0
-  })
-
-  const tl = gsap.timeline({
-    onComplete:AimateRing
+function AimateRing() {
+  gsap.set(uniforms.uProgress, {
+    value: uniforms.uBaseLength.value,
+  });
+  gsap.set(uniforms.uEase, {
+    value: 0,
   });
 
-  tl.to(uniforms.uEase,{
-    value:1,
-    ease:"linear",
-    duration:1
-  })
-  tl.to(uniforms.uProgress,{
-    delay:.3,
-    value:1.2,
-    ease:"linear",
-    duration:10
-  },'<')
+  const tl = gsap.timeline({
+    onComplete: AimateRing,
+  });
+
+  tl.to(uniforms.uEase, {
+    value: 1,
+    ease: "linear",
+    duration: 1,
+  });
+  tl.to(
+    uniforms.uProgress,
+    {
+      delay: 0.3,
+      value: 1.2,
+      ease: "linear",
+      duration: 10,
+    },
+    "<"
+  );
 }
-AimateRing()
+AimateRing();
 
 const clock = new Clock();
 let PrevTime = clock.getElapsedTime();
@@ -206,13 +208,10 @@ gui.close();
 let id = null;
 
 function resize() {
-  if(id) {
-    clearInterval(id)
-    id = null
-  }
+  clearInterval(id);
   id = setInterval(() => {
-      window.location.reload()
-    },500)
+    window.location.reload();
+  }, 500);
   camera.aspect = innerWidth / innerHeight;
   camera.updateProjectionMatrix();
   canvas.width = innerWidth;
