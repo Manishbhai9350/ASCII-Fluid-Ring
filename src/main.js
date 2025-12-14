@@ -11,6 +11,7 @@ import GUI from "lil-gui";
 import { uniform } from "three/tsl";
 import { CreateRingTexture } from "./tsl/ring.js";
 import { OrbitControls } from "three/examples/jsm/Addons.js";
+import gsap from "gsap";
 
 console.clear();
 
@@ -28,7 +29,10 @@ const uniforms = {
   uDistSpeed: uniform(3), // Thickness Noise Speed
 
   uBaseLength: uniform(0.2), // Base Length
-  uProgress: uniform(0.4), // Progress
+
+
+  uEase: uniform(0), // Progress
+  uProgress: uniform(0.2), // Progress
   uSpeed: uniform(1), // Speed
 };
 
@@ -59,30 +63,29 @@ const camera = new THREE.PerspectiveCamera(
 );
 camera.position.z = 5;
 
-
 const Manager = new THREE.LoadingManager();
 const Draco = new DRACOLoader(Manager);
 const GLB = new GLTFLoader(Manager);
-const Texture = new THREE.TextureLoader(Manager)
+const Texture = new THREE.TextureLoader(Manager);
 
-const asciiTexture = await Texture.loadAsync('/ascii_texture.jpg')
+const asciiTexture = await Texture.loadAsync("/ascii_texture.jpg");
 
 Draco.setDecoderPath("/draco/");
 Draco.setDecoderConfig({ type: "wasm" });
 GLB.setDRACOLoader(Draco);
 
-const controls = new OrbitControls(camera,canvas)
+const controls = new OrbitControls(camera, canvas);
 
 const { width: SceneWidth, height: SceneHeight } = GetSceneBounds(
   renderer,
   camera
 );
 
-const size = 0.1;
+const size = 0.15;
 const gap = 0;
 
-const rows = Math.ceil(SceneWidth / size - gap * SceneHeight) + 1; // X count
-const cols = Math.ceil(SceneHeight / size  - gap * SceneHeight) + 1; // Y count
+const rows = Math.ceil(SceneHeight / size - gap * SceneHeight); /* + 1 */ // X count
+const cols = Math.ceil(SceneWidth / size - gap * SceneHeight); /* + 1 */ // Y count
 
 // Creating The Ring Texture
 
@@ -111,15 +114,15 @@ const { renderTarget, ringTexture, ringScene } = CreateRingTexture(
 const instances = rows * cols;
 
 const InstancedPlanes = new THREE.InstancedMesh(
-  new THREE.PlaneGeometry(size * 1.2, size),
+  new THREE.PlaneGeometry(size, size),
   GetMaterial({
     aspect: SceneWidth / SceneHeight,
     ...GetASCIITexture(),
-    invRows: 1 / rows,
-    invCols: 1 / cols,
+    rows,
+    cols,
     uniforms,
     ringTexture,
-    asciiTexture
+    asciiTexture,
   }),
   instances
 );
@@ -127,21 +130,16 @@ const InstancedPlanes = new THREE.InstancedMesh(
 const positions = new Float32Array(instances * 3);
 const uvs = new Float32Array(instances * 2);
 
-for (let i = 0; i < cols; i++) {
-  // Y axis
-  for (let j = 0; j < rows; j++) {
-    // X axis
+for (let j = 0; j < rows; j++) {
+  for (let i = 0; i < cols; i++) {
+    const index = i + j * cols;
 
-    const index = j + i * rows; // one index per instance
-
-    positions[index * 3 + 0] = (j - rows / 2 + 1 / 2) * size; // X
-    positions[index * 3 + 1] = (i - cols / 2 + 1 / 2) * size; // Y
+    positions[index * 3 + 0] = (i - cols / 2 + 1/2) * size; // X
+    positions[index * 3 + 1] = (j - rows / 2 + 1/2) * size; // Y
     positions[index * 3 + 2] = 0; // Z
 
-    const UVx = j / rows;
-    const UVy = i / cols;
-    uvs[index * 2 + 0] = UVx;
-    uvs[index * 2 + 1] = UVy;
+    uvs[index * 2 + 0] = (i) / cols;
+    uvs[index * 2 + 1] = (j) / rows;
   }
 }
 
@@ -156,6 +154,35 @@ InstancedPlanes.geometry.setAttribute(
 
 scene.add(InstancedPlanes);
 
+
+// Animating The Ring Easings
+
+function AimateRing(){
+  gsap.set(uniforms.uProgress,{
+    value:uniforms.uBaseLength.value
+  })
+  gsap.set(uniforms.uEase,{
+    value:0
+  })
+
+  const tl = gsap.timeline({
+    onComplete:AimateRing
+  });
+
+  tl.to(uniforms.uEase,{
+    value:1,
+    ease:"linear",
+    duration:1
+  })
+  tl.to(uniforms.uProgress,{
+    delay:.3,
+    value:1.2,
+    ease:"linear",
+    duration:10
+  },'<')
+}
+AimateRing()
+
 const clock = new Clock();
 let PrevTime = clock.getElapsedTime();
 
@@ -163,15 +190,6 @@ function Animate() {
   const CurrentTime = clock.getElapsedTime();
   const DT = CurrentTime - PrevTime;
   PrevTime = CurrentTime;
-
-  if (uniforms.uProgress.value >= 1) {
-    uniforms.uProgress.value = uniforms.uBaseLength.value;
-  }
-
-  uniforms.uProgress.value += DT * uniforms.uSpeed.value * 0.1;
-
-  // console.log(uniforms.uProgress.value >= uniforms.uBaseLength.value);
-  // console.log(uniforms.uProgress.value);
 
   renderer.setRenderTarget(renderTarget);
   renderer.renderAsync(ringScene, camera);

@@ -66,12 +66,16 @@ export const GetRingMaterial = ({
 
     const aspect = vec2(1, screenAspect);
 
+    const progress = uniforms.uProgress; // Uniform
+    const ease = uniforms.uEase; // Uniform
+
     const noiseScale = uniforms.uNoiseScale; // Uniform
     const noiseFactor = uniforms.uNoiseFactor; // Uniform
-    const progress = uniforms.uProgress; // Uniform
+
     const distScale = uniforms.uDistScale; // Uniform
     const distFactor = uniforms.uDistFactor; // Uniform
     const distSpeed = uniforms.uDistSpeed; // Uniform
+
     const uDist = uniforms.uDist; // Uniform
 
     const screenUV = uv();
@@ -150,13 +154,10 @@ export const GetRingMaterial = ({
       .oneMinus()
       .mul(step(base, len));
 
-    const theta = atan2(screenUV.y, screenUV.x);
+    
+    const ring = ring1.add(ring2).mul(ease);
 
-    const opacityDiff = perlinNoise(screenUV.add(progress).mul(100)).mul(10);
-
-    const ring = ring1.add(ring2);
-
-    return vec4(ring, 0, 0, 0);
+    return vec4(ring, ring, ring, 0);
   })();
 
   return material;

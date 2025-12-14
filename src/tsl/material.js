@@ -49,12 +49,13 @@ export const GetMaterial = ({
   aspect: screenAspect,
   ascii,
   length: asciiLen,
-  invRows = 0,
-  invCols = 0,
+  rows = 0,
+  cols = 0,
   uniforms,
   ringTexture,
   asciiTexture: asciiCharTexture,
 }) => {
+  console.log(rows, cols);
   const material = new MeshBasicNodeMaterial();
 
   material.positionNode = Fn(() => {
@@ -66,14 +67,15 @@ export const GetMaterial = ({
   material.colorNode = Fn(() => {
     const time = timerLocal().mul(0.05);
 
-    const invAspect = vec2(invRows, invCols);
+    const invAspect = vec2(cols, rows);
 
     // Calculating the correct screenUV as the screen is not just a plane but bunch of squares
     const rawScreenUV = attribute("screenUV", "vec2");
-    const screenUV = rawScreenUV.add(uv().mul(invAspect));
+    const aspectedUV = uv().div(invAspect);
+    const screenUV = rawScreenUV.add(aspectedUV);
 
     // Getting the center texture value for each square to show corect character;
-    const centeredUV = vec2(0.5, 0.5).mul(invAspect).add(screenUV);
+    const centeredUV = vec2(0.5, 0.5).div(invAspect).add(rawScreenUV);
     const centerPixelValue = texture(ringTexture, centeredUV).r;
 
     const asciiChars = float(5);
@@ -96,23 +98,22 @@ export const GetMaterial = ({
     const asciiUV = vec2(uv().x.mul(baseOffset).add(offset), uv().y);
 
     let asciiTexture = texture(asciiCharTexture, asciiUV);
-
     const opacedAscii = asciiTexture.mul(smoothstep(0, 1, ring.r));
 
     // Coloring
+
     let blue = vec4(69, 0, 173, 255).div(255);
     let pink = vec4(0.9, 0.46, 0.87, 1);
     const darkBlue = vec4(54, 1, 133, 255).div(255);
     const darkMaron = vec4(143, 1, 119, 255).div(255);
     let finalColor = mix(blue, vec4(0, 0, 0, 1), ring.r.oneMinus());
+    finalColor = mix(finalColor,opacedAscii,centerPixelValue.mul(asciiTexture.r))
 
-    // finalColor = mix(finalColor, opacedAscii, opacedAscii.r.mul(.7));
-
-    // return finalColor;
-    return ring;
+    return finalColor;
+    // return ring;
     // return vec4(ring.r,ring.r,ring.r,1);
-    // return vec4(rawScreenUV,0,1);
-    // return texture(asciiCharTexture,screenUV);
+    // return opacedAscii;
+    // return vec4(ring.r,0,0,1);
   })();
 
   return material;
