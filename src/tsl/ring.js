@@ -52,7 +52,6 @@ export const GetRingMaterial = ({
   invCols = 0,
 }) => {
 
-  console.log(invRows,invCols)
   const material = new MeshBasicNodeMaterial();
 
   material.positionNode = Fn(() => {
@@ -80,7 +79,7 @@ export const GetRingMaterial = ({
 
     const screenUV = uv();
 
-    let len = length(screenUV.sub(0.5)/* .div(aspect) */)
+    let len = length(screenUV.sub(0.5).div(aspect))
       .div(1 / 2)
       .div(float(2).pow(1 / 2));
 

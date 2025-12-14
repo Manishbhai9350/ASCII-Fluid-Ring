@@ -55,7 +55,6 @@ export const GetMaterial = ({
   ringTexture,
   asciiTexture: asciiCharTexture,
 }) => {
-  console.log(rows, cols);
   const material = new MeshBasicNodeMaterial();
 
   material.positionNode = Fn(() => {

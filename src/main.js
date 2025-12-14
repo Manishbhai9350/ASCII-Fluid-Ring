@@ -93,7 +93,7 @@ const { renderTarget, ringTexture, ringScene } = CreateRingTexture(
   SceneWidth,
   SceneHeight,
   {
-    aspect: SceneWidth / SceneHeight,
+    aspect: innerWidth <= 900 ? SceneWidth / SceneHeight : 1,
     ...GetASCIITexture(),
     invRows: 1 / rows,
     invCols: 1 / cols,
@@ -203,7 +203,16 @@ requestAnimationFrame(Animate);
 
 gui.close();
 
+let id = null;
+
 function resize() {
+  if(id) {
+    clearInterval(id)
+    id = null
+  }
+  id = setInterval(() => {
+      window.location.reload()
+    },500)
   camera.aspect = innerWidth / innerHeight;
   camera.updateProjectionMatrix();
   canvas.width = innerWidth;
